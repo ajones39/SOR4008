@@ -111,7 +111,7 @@ p <- 3  # alpha, beta1, beta2
 
 # RSS and sigma^2_hat
 RSS        <- sum(resid(ml_fit)^2)
-sigma2_hat <- RSS / (n - p)      # unbiased; for pure MLE you’d divide by n, but this is fine
+sigma2_hat <- RSS / (n - p)      
 tau_hat    <- 1 / sigma2_hat
 
 ml_results <- c(
@@ -409,7 +409,7 @@ iterations = 50000
 startvalue = c(4,0, 3, 1)
 t_metrop = system.time({chain = run_metropolis_MCMC(startvalue, iterations)}) #Timing metropolis hastings
  
-burnIn = 10000
+burnin = 10000
 acceptance = 1-mean(duplicated(chain[-(1:burnin),]))
 
 MHalpha<-mean(chain[burnIn:iterations,1])
@@ -543,7 +543,7 @@ for (p in params) {
   true_val <- true_vals[p]
   abline(v = true_val, col = "red", lwd = 2)
   
-  # legend (same style as Gibbs)
+  # legend 
   legend("topright",
          legend = c(
            paste0("Median=", round(med, 3)),
@@ -607,8 +607,7 @@ We need the conditional probability distributions for each parameter:
 
 ```{r}
 # Gibbs sampler for linear model with Normal priors on betas and Gamma prior on tau
-# Assumes: y, x_1, x_2, alphamean, alphavar, beta_1mean, beta_1var,
-#          beta_2mean, beta_2var, taushape, tausscale are defined.
+
 
 #install.packages("coda")
 library(coda)
@@ -700,7 +699,7 @@ t_gibbs <- system.time({gibbs_chain <- gibbs_simple(y, x_1, x_2, niter = iterati
                       beta_2mean, beta_2var,
                       taushape, taurate = 1/taushape, startvalue)})
 
-# posterior means (after discarding e.g. first 5000 as burn-in)
+# posterior means (after discarding e.g. first 1000 as burn-in)
 burnin = 10000
 prediction <- colMeans(gibbs_chain[burnin:iterations, ])
 Gibbs_alpha <- prediction[1]
@@ -713,7 +712,7 @@ Gibbs_tau <- prediction[4]
 Now we get confidence intervals for each parameter:
 
 ```{r}
-# assume gibbs_chain has columns: alpha,beta1,beta2,tau
+
 colnames(gibbs_chain) <- c("alpha","beta1","beta2","tau")
 
 chain_post <- gibbs_chain[(burnin+1):nrow(gibbs_chain), ]
@@ -754,7 +753,7 @@ dev.off()
 Plotting histograms for a single run:
 
 ```{r}
-# assume gibbs_chain has columns: alpha,beta1,beta2,tau
+
 colnames(gibbs_chain) <- c("alpha","beta1","beta2","tau")
 burnin <- 5000
 chain_post <- gibbs_chain[(burnin+1):nrow(gibbs_chain), ]
@@ -813,7 +812,7 @@ for (b in 1:B) {
   eps_b <- rnorm(n, mean = 0, sd = sqrt(1/truetau))
   y_b   <- truealpha + truebeta_1 * x_1 + truebeta_2 * x_2 + eps_b
 
-  # 2) run your Gibbs sampler on this dataset
+  # 2) run Gibbs sampler on this dataset
   gibbs_chain_b <- gibbs_simple(
     y_b, x_1, x_2,
     niter = niter,
@@ -841,7 +840,7 @@ for (b in 1:B) {
 Analytics of the gibbs sampler and checking that the analytic and frequentist approach agrees
 
 ```{r}
-# Assume: draws is N x 4 with columns: alpha,beta1,beta2,tau
+
 tau_draws <- gibbs_chain[, "tau"]    # or draws[,4]
 
 # Basic summaries
@@ -1036,20 +1035,19 @@ data_gibbs <- data.frame(y = y, x_1 = x_1, x_2 = x_2)
 # Prior for beta (alpha, beta1, beta2)
 b0 <- c(alphamean, beta_1mean, beta_2mean)
 
-# prior precision matrix for beta (inverse variances)
+# prior precision matrix for beta
 B0 <- diag(c(1/alphavar, 1/beta_1var, 1/beta_2var))
 
-# prior for sigma^2: sigma^2 ~ Inv-Gamma(c0/2, d0/2)
-# which corresponds to tau ~ Gamma(c0/2, d0/2)
+
 c0 <- 2 * taushape
 d0 <- 2 * 1/taushape #taurate
 
-# How many post–burn-in draws do you want from MCMCpack?
+
 niter = 50000
 burnin = 10000
 mcmc_iters <- niter - burnin
 
-  # for reproducibility if you like
+  
 t_package <- system.time({fit_mcmcpack <- MCMCregress(
   y ~ x_1 + x_2,
   data   = data_gibbs,
@@ -1078,11 +1076,11 @@ post_gibbs <- gibbs_chain[(burnin+1):nrow(gibbs_chain), ]
 
 post_mcmc <- as.matrix(fit_mcmcpack)
 colnames(post_mcmc)
-# likely: "(Intercept)", "x_1", "x_2", "sigma2"
+
 
 tau_mcmc <- 1 / post_mcmc[,"sigma2"]
 
-# Create a matrix with same parameter order as your Gibbs
+
 post_mcmc_aligned <- cbind(
   alpha = post_mcmc[,"(Intercept)"],
   beta1 = post_mcmc[,"x_1"],
@@ -1269,12 +1267,12 @@ true_vals <- c(alpha = truealpha,
 
 ## Posterior / point estimates ------------------------------------
 
-# 1) Your Gibbs (post burn-in)
+
 post_gibbs <- gibbs_chain[(burnin+1):nrow(gibbs_chain), ]
 colnames(post_gibbs) <- c("alpha","beta1","beta2","tau")
 gibbs_means <- colMeans(post_gibbs)
 
-# 2) Importance sampling (IS resampled draws)
+# 2) Importance sampling 
 post_IS <- cbind(
   alpha = alpha_list,
   beta1 = beta1_list,
@@ -1294,7 +1292,7 @@ mh_means <- colMeans(post_mh)
 # 5) Maximum likelihood
 # ml_results: named vector c(alpha, beta1, beta2, tau)
 
-## Runtimes (elapsed seconds) ------------------------------------
+## Runtimes 
 
 time_gibbs   <- as.numeric(t_gibbs["elapsed"])      # your Gibbs
 time_package <- as.numeric(t_package["elapsed"])    # MCMCpack
@@ -1302,7 +1300,7 @@ time_IS      <- as.numeric(t_is["elapsed"])         # importance sampling
 time_ml      <- as.numeric(t_ml["elapsed"])         # maximum likelihood
 time_mh      <- as.numeric(t_metrop["elapsed"])     # Metropolis–Hastings
 
-## Build joint comparison table ----------------------------------
+
 
 summary_table <- rbind(
   "True values"          = c(true_vals,      Time_sec = NA),
@@ -1330,7 +1328,7 @@ summary_table <- cbind(summary_table,
 
 summary_table <- round(summary_table, 4)
 
-# Overleaf-ready LaTeX table
+
 kable(summary_table,
       caption = "True parameter values, point/posterior estimates, runtimes (seconds), and overall RMSE for each method.",
       digits = 4,
